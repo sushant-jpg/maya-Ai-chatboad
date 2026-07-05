@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Maya is a polished AI assistant with chat, settings, and modern UI." />
+    <title>Maya AI</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./chat.css" />
+    <link rel="stylesheet" href="./sidebar.css" />
+    <link rel="stylesheet" href="./responsive.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Conversation sidebar">
+        <div class="sidebar__header">
+          <div class="brand">
+            <div class="brand__mark">✦</div>
+            <div>
+              <div class="brand__title">Maya</div>
+              <div class="brand__subtitle">AI Assistant</div>
+            </div>
+          </div>
+          <button class="icon-btn" id="new-chat-btn" title="Start a new chat">＋</button>
+        </div>
+
+        <label class="search-box" for="chat-search">
+          <span>⌕</span>
+          <input id="chat-search" type="search" placeholder="Search chats" />
+        </label>
+
+        <div class="sidebar__section">
+          <div class="sidebar__section-title">Conversations</div>
+          <div id="conversation-list" class="conversation-list"></div>
+        </div>
+
+        <div class="sidebar__footer">
+          <button class="sidebar__action" id="settings-open-btn">Settings</button>
+        </div>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div>
+            <div class="topbar__title" id="current-chat-title">Maya</div>
+            <div class="topbar__subtitle" id="current-chat-subtitle">Hello, I'm Maya 👋</div>
+          </div>
+          <div class="topbar__actions">
+            <button class="icon-btn" id="theme-toggle" aria-label="Toggle theme">☼</button>
+            <div class="avatar" aria-label="Profile">M</div>
+          </div>
+        </header>
+
+        <section class="landing-screen" id="landing-screen">
+          <div class="hero-card">
+            <div class="hero-card__badge">Trusted • Secure • Fast</div>
+            <h1>Hello, I'm Maya 👋</h1>
+            <p>How can I help you today?</p>
+            <div class="suggestions" id="suggestions"></div>
+          </div>
+        </section>
+
+        <section class="chat-section hidden" id="chat-section" aria-live="polite">
+          <div class="messages" id="messages"></div>
+          <div class="composer-card">
+            <div class="composer-toolbar">
+              <label class="tool-btn" title="Attach file">
+                <input type="file" id="file-input" hidden />
+                <span>📎</span>
+              </label>
+              <button class="tool-btn" id="voice-btn" type="button" title="Voice input">🎙</button>
+              <button class="tool-btn" id="clear-chat-btn" type="button" title="Clear current chat">🗑</button>
+            </div>
+            <textarea id="message-input" rows="1" placeholder="Ask Maya anything..."></textarea>
+            <div class="composer-actions">
+              <div class="composer-hint">Press Enter to send · Shift + Enter for a new line</div>
+              <button class="send-btn" id="send-btn" type="button">Send</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal hidden" id="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="modal__content">
+        <div class="modal__header">
+          <h2 id="settings-title">Settings</h2>
+          <button class="icon-btn" id="settings-close-btn" aria-label="Close settings">✕</button>
+        </div>
+        <div class="settings-grid">
+          <label class="field">
+            <span>Theme</span>
+            <select id="theme-select">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Font Size</span>
+            <select id="font-size-select">
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Provider</span>
+            <select id="provider-select">
+              <option value="gemini">Gemini</option>
+              <option value="openai">OpenAI</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="deepseek">DeepSeek</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Temperature</span>
+            <input id="temperature-input" type="range" min="0" max="1" step="0.1" value="0.7" />
+          </label>
+        </div>
+        <div class="settings-actions">
+          <button class="secondary-btn" id="clear-chats-btn">Clear Chats</button>
+          <button class="secondary-btn" id="export-chats-btn">Export Chats</button>
+          <button class="secondary-btn" id="import-chats-btn">Import Chats</button>
+        </div>
+        <input id="import-file-input" type="file" accept="application/json" hidden />
+      </div>
+    </div>
+
+    <div class="toast hidden" id="toast"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

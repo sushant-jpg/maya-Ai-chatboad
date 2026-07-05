@@ -1,0 +1,125 @@
+.sidebar {
+  border-right: 1px solid var(--line);
+  background: rgba(6, 8, 20, 0.84);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+:root[data-theme="light"] .sidebar {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.sidebar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.brand__mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white;
+  font-weight: 700;
+}
+
+.brand__title {
+  font-weight: 700;
+}
+
+.brand__subtitle {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+}
+
+.search-box input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+}
+
+.sidebar__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.sidebar__section-title {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  overflow: auto;
+}
+
+.conversation-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.8rem 0.85rem;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  text-align: left;
+  color: var(--text);
+}
+
+.conversation-item.active {
+  background: var(--panel-2);
+  border-color: rgba(124, 92, 255, 0.24);
+}
+
+.conversation-item__title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.conversation-item__meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.sidebar__footer {
+  margin-top: auto;
+}
+
+.sidebar__action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 0.95rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white;
+  font-weight: 600;
+}
