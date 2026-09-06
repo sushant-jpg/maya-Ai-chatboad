@@ -1,13 +1,17 @@
 import { loadState, saveState } from './storage.js';
-import { renderConversations, renderMessages, setActiveConversation, setLandingVisible, showToast, updateStreamingMessage } from './ui.js';
+import { renderConversations, renderMessages, setLandingVisible, showToast, updateStreamingMessage } from './ui.js';
 import { streamResponse } from './api.js';
 import { createId, formatTime } from './utils.js';
 
-let provider = 'local';
 let isSending = false;
 let activeAbortController = null;
 let streamBuffer = '';
 let streamFlushTimer = null;
+
+function extractAnswer(content) {
+  const codeStart = content.search(/```(?:c|cpp|c\+\+)?\s*\n|#include\s*</i);
+  return codeStart >= 0 ? content.slice(codeStart).trim() : content.trim();
+}
 
 function setGenerationState(generating) {
   document.getElementById('send-btn').disabled = generating;
@@ -15,7 +19,7 @@ function setGenerationState(generating) {
   document.getElementById('stop-btn').classList.toggle('hidden', !generating);
 }
 
-function flushStream(conversation, assistantMessage) {
+function flushStream(assistantMessage) {
   if (!streamBuffer) return;
   assistantMessage.content += streamBuffer;
   streamBuffer = '';
@@ -23,9 +27,9 @@ function flushStream(conversation, assistantMessage) {
   streamFlushTimer = null;
 }
 
-function scheduleStreamFlush(conversation, assistantMessage) {
+function scheduleStreamFlush(assistantMessage) {
   if (streamFlushTimer !== null) return;
-  streamFlushTimer = window.setTimeout(() => flushStream(conversation, assistantMessage), 75);
+  streamFlushTimer = window.setTimeout(() => flushStream(assistantMessage), 75);
 }
 
 function isActiveConversation(conversation) {
@@ -39,7 +43,9 @@ export function initChat() {
   const state = loadState();
   if (!state.conversations?.length) {
     createNewConversation();
+    return loadState();
   }
+  return state;
 }
 
 /**
@@ -58,7 +64,7 @@ export function createNewConversation() {
 
   state.conversations = [conversation, ...(state.conversations || [])];
   state.activeConversationId = conversation.id;
-  saveState(state);
+  saveState(state, true);
   return conversation;
 }
 
@@ -91,9 +97,6 @@ export async function sendMessage() {
   conversation.messages.push(userMessage);
   conversation.title = content.slice(0, 40) || 'New conversation';
   conversation.updatedAt = formatTime(new Date().toISOString());
-  saveState(state);
-  renderConversations(state.conversations, conversation.id);
-  renderMessages(conversation.messages);
   input.value = '';
   input.style.height = 'auto';
   setLandingVisible(false);
@@ -105,7 +108,7 @@ export async function sendMessage() {
     timestamp: new Date().toISOString(),
   };
   conversation.messages.push(assistantMessage);
-  saveState(state);
+  saveState(state, true);
   renderMessages(conversation.messages);
 
   try {
@@ -113,8 +116,7 @@ export async function sendMessage() {
     activeAbortController = new AbortController();
     setGenerationState(true);
     assistantMessage.content = '';
-    renderMessages(conversation.messages);
-    const history = conversation.messages.slice(0, -2).slice(-20).map(({ role, content: text }) => ({ role, content: text }));
+    const history = conversation.messages.slice(0, -2).slice(-10).map(({ role, content: text }) => ({ role, content: text.slice(-4000) }));
     await streamResponse({
       message: content,
       conversation: history,
@@ -122,31 +124,33 @@ export async function sendMessage() {
         model: document.getElementById('model-select').value,
         temperature: Number(document.getElementById('temperature-input').value),
         context: Number(document.getElementById('context-input').value),
-        maxTokens: Number(document.getElementById('max-tokens-input').value) || 512,
+        maxTokens: Math.max(Number(document.getElementById('max-tokens-input').value) || 256, 512),
       },
       signal: activeAbortController.signal,
       onToken: (token) => {
         streamBuffer += token;
-        scheduleStreamFlush(conversation, assistantMessage);
+        scheduleStreamFlush(assistantMessage);
       },
     });
-    flushStream(conversation, assistantMessage);
+    flushStream(assistantMessage);
+    assistantMessage.content = extractAnswer(assistantMessage.content);
+    renderMessages(conversation.messages);
     conversation.updatedAt = formatTime(new Date().toISOString());
-    saveState(state);
-    if (isActiveConversation(conversation)) {
+    saveState(state, true);
+    if (state.activeConversationId === conversation.id) {
       renderMessages(conversation.messages);
       renderConversations(state.conversations, conversation.id);
     }
   } catch (error) {
-    flushStream(conversation, assistantMessage);
+    flushStream(assistantMessage);
     if (error.name === 'AbortError') {
       assistantMessage.content += assistantMessage.content ? '\n\n[Generation stopped]' : '[Generation stopped]';
     } else {
       assistantMessage.content = `Error: ${error.message || 'Local model request failed'}`;
       showToast(error.message || 'Local model request failed');
     }
-    saveState(state);
-    if (isActiveConversation(conversation)) renderMessages(conversation.messages);
+    saveState(state, true);
+    if (state.activeConversationId === conversation.id) renderMessages(conversation.messages);
   } finally {
     if (streamFlushTimer !== null) {
       window.clearTimeout(streamFlushTimer);
@@ -170,36 +174,6 @@ export function handleSuggestionClick(prompt) {
   const input = document.getElementById('message-input');
   input.value = prompt;
   input.focus();
-}
-
-/**
- * Deletes a conversation from storage.
- * @param {string} conversationId - Conversation id.
- */
-export function deleteConversation(conversationId) {
-  if (loadState().activeConversationId === conversationId) stopGeneration();
-  const state = loadState();
-  state.conversations = state.conversations.filter((conversation) => conversation.id !== conversationId);
-  if (state.activeConversationId === conversationId) {
-    state.activeConversationId = state.conversations[0]?.id || null;
-  }
-  saveState(state);
-  renderConversations(state.conversations, state.activeConversationId);
-}
-
-/**
- * Renames a conversation title.
- * @param {string} conversationId - Conversation id.
- * @param {string} title - New title.
- */
-export function renameConversation(conversationId, title) {
-  const state = loadState();
-  const conversation = state.conversations.find((item) => item.id === conversationId);
-  if (conversation) {
-    conversation.title = title;
-    saveState(state);
-    renderConversations(state.conversations, state.activeConversationId);
-  }
 }
 
 /**
@@ -233,7 +207,7 @@ export function importChats(file) {
       state.conversations = imported.conversations || [];
       state.activeConversationId = imported.activeConversationId || state.conversations[0]?.id || null;
       state.settings = imported.settings || state.settings || {};
-      saveState(state);
+      saveState(state, true);
       renderConversations(state.conversations, state.activeConversationId);
       showToast('Chats imported');
     } catch (error) {
@@ -253,7 +227,7 @@ export function clearChats() {
   const state = loadState();
   state.conversations = [];
   state.activeConversationId = null;
-  saveState(state);
+  saveState(state, true);
 }
 
 /**
@@ -275,24 +249,9 @@ export function clearCurrentChat() {
   conversation.messages = [];
   conversation.title = 'Cleared chat';
   conversation.updatedAt = formatTime(new Date().toISOString());
-  saveState(state);
+  saveState(state, true);
   renderMessages([]);
   renderConversations(state.conversations, state.activeConversationId);
   showToast('Chat cleared');
 }
 
-/**
- * Sets the selected provider.
- * @param {string} nextProvider - Provider name.
- */
-export function setProvider(nextProvider) {
-  provider = nextProvider || 'local';
-}
-
-/**
- * Retrieves the selected provider.
- * @returns {string} Current provider.
- */
-export function getProvider() {
-  return provider;
-}

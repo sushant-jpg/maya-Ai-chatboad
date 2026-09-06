@@ -3,7 +3,7 @@ import path from 'node:path';
 
 export function createApp({ ollama, projectRoot, defaultModel = 'qwen3:4b', corsOrigins = process.env.CORS_ORIGINS }) {
   const app = express();
-  const allowedOrigins = new Set((corsOrigins || 'http://localhost:3000,http://localhost:5500,https://sushant-jpg.github.io').split(',').map((origin) => origin.trim()).filter(Boolean));
+  const allowedOrigins = new Set((corsOrigins || 'http://localhost:3000,http://localhost:5500,http://127.0.0.1:5500,https://sushant-jpg.github.io').split(',').map((origin) => origin.trim()).filter(Boolean));
   app.use((request, response, next) => {
     const origin = request.headers.origin;
     if (!origin || allowedOrigins.has(origin)) response.setHeader('Access-Control-Allow-Origin', origin || '*');
@@ -20,6 +20,15 @@ export function createApp({ ollama, projectRoot, defaultModel = 'qwen3:4b', cors
   app.get('/api/health', async (_request, response) => {
     try {
       const models = await ollama.listModels();
+      if (!models.includes(defaultModel)) {
+        return response.status(503).json({
+          ok: false,
+          ollama: 'connected',
+          model: defaultModel,
+          models,
+          error: `Model ${defaultModel} is not installed. Run: ollama pull ${defaultModel}`,
+        });
+      }
       response.json({ ok: true, ollama: 'connected', model: defaultModel, models });
     } catch (_error) {
       response.status(503).json({ ok: false, ollama: 'unavailable', error: 'Ollama is not running or cannot be reached' });
@@ -35,7 +44,7 @@ export function createApp({ ollama, projectRoot, defaultModel = 'qwen3:4b', cors
   });
 
   app.post('/api/chat', async (request, response) => {
-    const { message, conversation = [], model = defaultModel, temperature = 0.7, context = 4096, maxTokens = 512 } = request.body || {};
+    const { message, conversation = [], model = defaultModel, temperature = 0.7, context = 2048, maxTokens = 256 } = request.body || {};
     if (typeof message !== 'string' || !message.trim()) return response.status(400).json({ error: 'A non-empty message is required' });
     if (!Array.isArray(conversation) || conversation.some((item) => !item || !['user', 'assistant'].includes(item.role) || typeof item.content !== 'string')) {
       return response.status(400).json({ error: 'Conversation must be an array of user and assistant messages' });
@@ -51,14 +60,14 @@ export function createApp({ ollama, projectRoot, defaultModel = 'qwen3:4b', cors
     });
 
     try {
-      const limitedConversation = conversation.slice(-20).map(({ role, content }) => ({ role, content: content.slice(-8000) }));
+      const limitedConversation = conversation.slice(-10).map(({ role, content }) => ({ role, content: content.slice(-4000) }));
       await ollama.streamChat({
         message: message.trim(),
         conversation: limitedConversation,
         model: model.trim(),
         temperature: Number(temperature),
-        context: Math.min(Math.max(Number(context) || 4096, 512), 8192),
-        maxTokens: Math.min(Math.max(Number(maxTokens) || 512, 128), 2048),
+        context: Math.min(Math.max(Number(context) || 2048, 512), 4096),
+        maxTokens: Math.min(Math.max(Number(maxTokens) || 256, 128), 1024),
         signal: abortController.signal,
         onToken: (token) => sendEvent(response, { token }),
       });

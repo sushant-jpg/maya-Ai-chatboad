@@ -105,12 +105,6 @@
             </select>
           </label>
           <label class="field">
-            <span>Provider</span>
-            <select id="provider-select">
-              <option value="local">Local LLM (Ollama)</option>
-            </select>
-          </label>
-          <label class="field">
             <span>Local Model</span>
             <select id="model-select">
               <option value="qwen3:4b">qwen3:4b</option>
@@ -122,11 +116,11 @@
           </label>
           <label class="field">
             <span>Context Size</span>
-            <input id="context-input" type="number" min="512" step="512" value="4096" />
+            <input id="context-input" type="number" min="512" step="512" value="2048" />
           </label>
           <label class="field">
             <span>Maximum Tokens</span>
-            <input id="max-tokens-input" type="number" min="128" step="128" value="512" />
+            <input id="max-tokens-input" type="number" min="128" step="128" value="256" />
           </label>
         </div>
         <div class="settings-actions">

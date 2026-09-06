@@ -102,7 +102,7 @@ Copy `.env.example` to `.env`:
 - `OLLAMA_MODEL`: default `qwen3:4b`
 - `OLLAMA_TIMEOUT_MS`: request timeout, default `120000`
 
-The UI defaults are also constrained server-side: context defaults to `4096` and is capped at `8192`; output defaults to `512` and is capped at `2048`.
+The UI defaults are also constrained server-side: context defaults to `2048` and is capped at `4096`; output defaults to `256` and is capped at `1024`.
 
 ## Docker Development
 

@@ -1,18 +1,14 @@
 import { initUI, renderConversations, renderMessages, updateThemeUI, showToast, setActiveConversation, setLandingVisible } from './ui.js';
-import { initChat, sendMessage, stopGeneration, handleSuggestionClick, createNewConversation, deleteConversation, renameConversation, exportChats, importChats, clearChats, clearCurrentChat, setProvider, getProvider } from './chat.js';
+import { initChat, sendMessage, stopGeneration, handleSuggestionClick, createNewConversation, exportChats, importChats, clearChats, clearCurrentChat } from './chat.js';
 import { loadState, saveState } from './storage.js';
-import { initTheme } from './theme.js';
-import { debounce, escapeHtml, formatTime } from './utils.js';
-import { getModels } from './api.js';
+import { debounce } from './utils.js';
 
 /**
  * Initializes the Maya application shell.
  */
 function initApp() {
-  const state = loadState();
-  initTheme();
+  const state = initChat();
   initUI();
-  initChat();
 
   const conversationState = state.conversations || [];
   const activeConversationId = state.activeConversationId || conversationState[0]?.id || null;
@@ -30,8 +26,6 @@ function initApp() {
   updateThemeUI(state.theme || 'dark');
   document.documentElement.setAttribute('data-font-size', state.settings?.fontSize || 'medium');
   document.documentElement.setAttribute('data-theme', state.theme || 'dark');
-  loadLocalModels();
-
   document.getElementById('new-chat-btn').addEventListener('click', () => {
     stopGeneration();
     const convo = createNewConversation();
@@ -78,11 +72,6 @@ function initApp() {
     const state = loadState();
     state.settings = { ...(state.settings || {}), fontSize: value };
     saveState(state);
-  });
-
-  document.getElementById('provider-select').addEventListener('change', (event) => {
-    setProvider(event.target.value);
-    showToast(`Provider set to ${event.target.value}`);
   });
 
   document.getElementById('model-select').addEventListener('change', (event) => {
@@ -140,20 +129,6 @@ function initApp() {
       event.target.classList.add('hidden');
     }
   });
-}
-
-async function loadLocalModels() {
-  const select = document.getElementById('model-select');
-  const savedModel = loadState().settings?.model;
-  try {
-    const models = await getModels();
-    const availableModels = models.length ? models : [savedModel || 'qwen3:4b'];
-    select.innerHTML = availableModels.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join('');
-    select.value = availableModels.includes(savedModel) ? savedModel : availableModels[0];
-  } catch (error) {
-    select.value = savedModel || 'qwen3:4b';
-    showToast('Ollama is unavailable. Start ollama serve.');
-  }
 }
 
 /**

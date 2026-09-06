@@ -38,11 +38,26 @@ describe('Maya API', () => {
     await request(app).get('/api/models').expect(503).expect(({ body }) => assert.match(body.error, /Unable to list/));
   });
 
+  test('health reports when the configured model is missing', async () => {
+    const app = createTestApp({ listModels: async () => [] });
+    await request(app).get('/api/health').expect(503).expect(({ body }) => {
+      assert.equal(body.ollama, 'connected');
+      assert.match(body.error, /ollama pull qwen3:4b/);
+    });
+  });
+
   test('allows GitHub Pages CORS and handles preflight', async () => {
     const app = createApp({ ollama: { listModels: async () => [], streamChat: async () => {} }, corsOrigins: 'https://sushant-jpg.github.io' });
     const response = await request(app).options('/api/chat').set('Origin', 'https://sushant-jpg.github.io').expect(204);
     assert.equal(response.headers['access-control-allow-origin'], 'https://sushant-jpg.github.io');
     await request(app).options('/api/chat').set('Origin', 'https://evil.example').expect(403);
+  });
+
+  test('allows VS Code Live Server on 127.0.0.1', async () => {
+    const app = createTestApp();
+    await request(app).options('/api/chat').set('Origin', 'http://127.0.0.1:5500').expect(204).expect(({ headers }) => {
+      assert.equal(headers['access-control-allow-origin'], 'http://127.0.0.1:5500');
+    });
   });
 
   test('chat rejects invalid requests', async () => {

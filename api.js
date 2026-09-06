@@ -1,8 +1,10 @@
 // config.js supplies the hosted backend URL for GitHub Pages builds.
 const configuredApiUrl = String(window.MAYA_API_BASE || '').trim().replace(/\/$/, '');
-const separateDevServer = window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port && window.location.port !== '3000');
+const configuredApiBase = configuredApiUrl.endsWith('/api') ? configuredApiUrl : `${configuredApiUrl}/api`;
+const localHostnames = new Set(['localhost', '127.0.0.1', '[::1]']);
+const separateDevServer = window.location.protocol === 'file:' || (localHostnames.has(window.location.hostname) && window.location.port && window.location.port !== '3000');
 const isGitHubPages = window.location.hostname.endsWith('.github.io');
-const API_BASE = configuredApiUrl ? `${configuredApiUrl}/api` : (separateDevServer ? 'http://localhost:3000/api' : (isGitHubPages ? '' : '/api'));
+const API_BASE = configuredApiUrl ? configuredApiBase : (separateDevServer ? 'http://localhost:3000/api' : (isGitHubPages ? '' : '/api'));
 const REQUEST_TIMEOUT_MS = 120000;
 
 function getApiBase() {
@@ -64,9 +66,3 @@ export async function streamResponse({ message, conversation, options = {}, onTo
   }
 }
 
-export async function getModels() {
-  const response = await fetch(`${getApiBase()}/models`);
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Could not load local models');
-  return data.models || [];
-}

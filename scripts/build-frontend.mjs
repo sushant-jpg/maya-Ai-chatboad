@@ -10,7 +10,6 @@ const frontendFiles = [
   'app.js',
   'chat.js',
   'storage.js',
-  'theme.js',
   'ui.js',
   'utils.js',
   'chat.css',

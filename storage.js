@@ -15,9 +15,10 @@ export function loadState() {
 
 /**
  * Saves the app state to localStorage.
- * @param {Object} state - New state object.
+ * @param {Object} state - New state object or partial update.
+ * @param {boolean} replace - Whether state is already complete.
  */
-export function saveState(state) {
-  const nextState = { ...loadState(), ...state };
+export function saveState(state, replace = false) {
+  const nextState = replace ? state : { ...loadState(), ...state };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
 }

@@ -1,4 +1,3 @@
-import { saveState, loadState } from './storage.js';
 import { escapeHtml, formatTime } from './utils.js';
 
 const state = {
@@ -80,11 +79,12 @@ export function renderMessages(messages) {
 }
 
 export function updateStreamingMessage(message) {
+  const messagesContainer = document.getElementById('messages');
+  const shouldStickToBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 80;
   const messageElement = document.querySelector(`[data-message-id="${message.id}"] .message__content`);
   if (messageElement) {
     messageElement.textContent = message.content;
-    window.requestAnimationFrame(() => {
-      const messagesContainer = document.getElementById('messages');
+    if (shouldStickToBottom) window.requestAnimationFrame(() => {
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     });
   }

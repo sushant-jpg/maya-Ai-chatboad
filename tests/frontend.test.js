@@ -10,6 +10,8 @@ describe('Maya frontend safeguards', () => {
     assert.match(source, /streamBuffer/);
     assert.match(source, /setTimeout\(\(\) => flushStream[\s\S]*75/);
     assert.doesNotMatch(source, /onToken: \(token\) => \{\s*assistantMessage\.content \+= token;\s*renderMessages/);
+    assert.match(source, /setGenerationState\(true\);\s*assistantMessage\.content = '';/);
+    assert.match(source, /function extractAnswer\(content\)/);
   });
 
   test('supports AbortController, Stop Generation, and request locking', async () => {
@@ -29,16 +31,17 @@ describe('Maya frontend safeguards', () => {
     assert.match(ui, /textContent = message\.content/);
     assert.doesNotMatch(api, /openai|gemini|openrouter|deepseek/i);
     assert.match(api, /window\.MAYA_API_BASE/);
+    assert.match(api, /127\.0\.0\.1/);
   });
 
   test('keeps requested model and generation defaults in the UI', async () => {
     const html = await read('index.html');
     const server = await read('server/app.js');
     assert.match(html, /qwen3:4b/);
-    assert.match(html, /value="4096"/);
-    assert.match(html, /value="512"/);
-    assert.match(server, /context = 4096/);
-    assert.match(server, /maxTokens = 512/);
+    assert.match(html, /value="2048"/);
+    assert.match(html, /value="256"/);
+    assert.match(server, /context = 2048/);
+    assert.match(server, /maxTokens = 256/);
   });
 
   test('build configuration supports GitHub Pages backend injection', async () => {
@@ -46,7 +49,7 @@ describe('Maya frontend safeguards', () => {
     const api = await read('api.js');
     const build = await read('scripts/build-frontend.mjs');
     assert.match(index, /config\.js/);
-    assert.match(api, /configuredApiUrl \? `\$\{configuredApiUrl\}\/api`/);
+    assert.match(api, /configuredApiUrl\.endsWith\('\/api'\)/);
     assert.match(build, /VITE_API_URL/);
     assert.match(build, /GITHUB_ACTIONS/);
   });

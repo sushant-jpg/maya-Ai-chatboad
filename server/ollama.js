@@ -9,7 +9,7 @@ export async function listModels() {
   return (data.models || []).map((model) => model.name);
 }
 
-export async function streamChat({ message, conversation = [], model = DEFAULT_MODEL, temperature = 0.7, context = 4096, maxTokens = 512, signal, onToken }) {
+export async function streamChat({ message, conversation = [], model = DEFAULT_MODEL, temperature = 0.7, context = 2048, maxTokens = 256, signal, onToken }) {
   const messages = [
     {
       role: 'system',
@@ -17,6 +17,7 @@ export async function streamChat({ message, conversation = [], model = DEFAULT_M
     },
     ...conversation,
     { role: 'user', content: message },
+    { role: 'assistant', content: '</think>' },
   ];
 
   const response = await fetch(`${OLLAMA_URL}/api/chat`, {
@@ -30,8 +31,8 @@ export async function streamChat({ message, conversation = [], model = DEFAULT_M
       think: false,
       options: {
         temperature: Number.isFinite(temperature) ? temperature : 0.7,
-        num_ctx: Number.isFinite(context) ? context : 4096,
-        num_predict: Number.isFinite(maxTokens) ? maxTokens : 512,
+        num_ctx: Number.isFinite(context) ? context : 2048,
+        num_predict: Number.isFinite(maxTokens) ? maxTokens : 256,
       },
     }),
   });
