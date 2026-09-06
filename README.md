@@ -41,6 +41,26 @@ cp .env.example .env
 
 Do not commit `.env`, `node_modules`, model files, or secrets. They are covered by `.gitignore` and `.dockerignore`.
 
+## GitHub Pages Frontend Configuration
+
+This repository uses plain HTML/CSS/JavaScript rather than Vite. The Pages workflow runs `npm run build`, which copies the frontend into `dist/` and generates `dist/config.js` from the `VITE_API_URL` GitHub Actions repository variable.
+
+Set this variable in **GitHub -> Settings -> Secrets and variables -> Actions -> Variables**:
+
+```text
+VITE_API_URL=https://YOUR-BACKEND-DOMAIN.example.com
+```
+
+Use the backend origin only. Do not include `/api`; the frontend adds `/api` automatically. For example, the final request is `https://YOUR-BACKEND-DOMAIN.example.com/api/chat`.
+
+Then set **Settings -> Pages -> Build and deployment -> Source** to **GitHub Actions** and push to `main`. The workflow in `.github/workflows/pages.yml` deploys the generated `dist/` directory to:
+
+```text
+https://sushant-jpg.github.io/maya-Ai-chatboad/
+```
+
+For local development, the committed `config.js` is empty. The frontend uses the same-origin Express API on port `3000`, or uses `http://localhost:3000/api` when opened through a separate local static server.
+
 ## Local Development
 
 Install Ollama:
@@ -164,6 +184,26 @@ Recommended options:
 1. **Single GPU server:** clone the repository on a Linux/NVIDIA host, run Docker Compose, pull `qwen3:4b`, and expose only the Maya port through a reverse proxy with HTTPS.
 2. **Separate services:** run the Node/Express container on a normal server and set `OLLAMA_URL` to a private Ollama host. Restrict the Ollama port with a firewall or private network.
 3. **Codespaces development:** use Codespaces for code and tests, but keep inference on a separate machine.
+
+The GitHub Pages frontend cannot reach `localhost` on your computer. It must use the public HTTPS URL of the separately deployed Express backend through `VITE_API_URL`. That backend must be configured with:
+
+```env
+CORS_ORIGINS=https://sushant-jpg.github.io
+OLLAMA_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=qwen3:4b
+```
+
+The backend's `POST /api/chat` route accepts JSON and its OPTIONS handler accepts the GitHub Pages origin. Test it after deployment with:
+
+```bash
+curl -i -X OPTIONS https://YOUR-BACKEND-DOMAIN.example.com/api/chat \
+    -H 'Origin: https://sushant-jpg.github.io' \
+    -H 'Access-Control-Request-Method: POST'
+
+curl -N https://YOUR-BACKEND-DOMAIN.example.com/api/chat \
+    -H 'Content-Type: application/json' \
+    -d '{"message":"Hello"}'
+```
 
 `.github/workflows/deploy.yml` is a manual SSH deployment template. Configure these GitHub Environment secrets before using it:
 

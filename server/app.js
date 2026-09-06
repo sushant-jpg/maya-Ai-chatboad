@@ -1,13 +1,16 @@
 import express from 'express';
 import path from 'node:path';
 
-export function createApp({ ollama, projectRoot, defaultModel = 'qwen3:4b' }) {
+export function createApp({ ollama, projectRoot, defaultModel = 'qwen3:4b', corsOrigins = process.env.CORS_ORIGINS }) {
   const app = express();
+  const allowedOrigins = new Set((corsOrigins || 'http://localhost:3000,http://localhost:5500,https://sushant-jpg.github.io').split(',').map((origin) => origin.trim()).filter(Boolean));
   app.use((request, response, next) => {
-    response.setHeader('Access-Control-Allow-Origin', request.headers.origin || '*');
+    const origin = request.headers.origin;
+    if (!origin || allowedOrigins.has(origin)) response.setHeader('Access-Control-Allow-Origin', origin || '*');
     response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     response.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    if (request.method === 'OPTIONS') return response.sendStatus(204);
+    response.setHeader('Vary', 'Origin');
+    if (request.method === 'OPTIONS') return origin && !allowedOrigins.has(origin) ? response.sendStatus(403) : response.sendStatus(204);
     next();
   });
   app.use(express.json({ limit: '1mb' }));

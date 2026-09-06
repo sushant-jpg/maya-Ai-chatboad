@@ -38,6 +38,13 @@ describe('Maya API', () => {
     await request(app).get('/api/models').expect(503).expect(({ body }) => assert.match(body.error, /Unable to list/));
   });
 
+  test('allows GitHub Pages CORS and handles preflight', async () => {
+    const app = createApp({ ollama: { listModels: async () => [], streamChat: async () => {} }, corsOrigins: 'https://sushant-jpg.github.io' });
+    const response = await request(app).options('/api/chat').set('Origin', 'https://sushant-jpg.github.io').expect(204);
+    assert.equal(response.headers['access-control-allow-origin'], 'https://sushant-jpg.github.io');
+    await request(app).options('/api/chat').set('Origin', 'https://evil.example').expect(403);
+  });
+
   test('chat rejects invalid requests', async () => {
     await request(createTestApp()).post('/api/chat').send({}).expect(400).expect(({ body }) => assert.match(body.error, /non-empty message/));
     await request(createTestApp()).post('/api/chat').send({ message: 'hello', conversation: [{ role: 'system', content: 'bad' }] }).expect(400);

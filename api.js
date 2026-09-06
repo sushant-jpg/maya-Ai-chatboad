@@ -1,7 +1,14 @@
-// Use same-origin API calls in containers/Codespaces; support a separate local Live Server too.
+// config.js supplies the hosted backend URL for GitHub Pages builds.
+const configuredApiUrl = String(window.MAYA_API_BASE || '').trim().replace(/\/$/, '');
 const separateDevServer = window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port && window.location.port !== '3000');
-const API_BASE = window.MAYA_API_BASE || (separateDevServer ? 'http://localhost:3000/api' : '/api');
+const isGitHubPages = window.location.hostname.endsWith('.github.io');
+const API_BASE = configuredApiUrl ? `${configuredApiUrl}/api` : (separateDevServer ? 'http://localhost:3000/api' : (isGitHubPages ? '' : '/api'));
 const REQUEST_TIMEOUT_MS = 120000;
+
+function getApiBase() {
+  if (!API_BASE) throw new Error('Production backend URL is not configured. Set the VITE_API_URL GitHub Actions variable and redeploy Pages.');
+  return API_BASE;
+}
 
 export async function streamResponse({ message, conversation, options = {}, onToken, signal }) {
   const timeoutController = new AbortController();
@@ -12,7 +19,7 @@ export async function streamResponse({ message, conversation, options = {}, onTo
   try {
   let response;
   try {
-    response = await fetch(`${API_BASE}/chat`, {
+    response = await fetch(`${getApiBase()}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: timeoutController.signal,
@@ -58,7 +65,7 @@ export async function streamResponse({ message, conversation, options = {}, onTo
 }
 
 export async function getModels() {
-  const response = await fetch(`${API_BASE}/models`);
+  const response = await fetch(`${getApiBase()}/models`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || 'Could not load local models');
   return data.models || [];

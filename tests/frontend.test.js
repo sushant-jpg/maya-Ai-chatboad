@@ -28,7 +28,7 @@ describe('Maya frontend safeguards', () => {
     assert.match(ui, /escapeHtml\(code\.trim\(\)\)/);
     assert.match(ui, /textContent = message\.content/);
     assert.doesNotMatch(api, /openai|gemini|openrouter|deepseek/i);
-    assert.match(api, /const API_BASE = window\.MAYA_API_BASE/);
+    assert.match(api, /window\.MAYA_API_BASE/);
   });
 
   test('keeps requested model and generation defaults in the UI', async () => {
@@ -39,5 +39,15 @@ describe('Maya frontend safeguards', () => {
     assert.match(html, /value="512"/);
     assert.match(server, /context = 4096/);
     assert.match(server, /maxTokens = 512/);
+  });
+
+  test('build configuration supports GitHub Pages backend injection', async () => {
+    const index = await read('index.html');
+    const api = await read('api.js');
+    const build = await read('scripts/build-frontend.mjs');
+    assert.match(index, /config\.js/);
+    assert.match(api, /configuredApiUrl \? `\$\{configuredApiUrl\}\/api`/);
+    assert.match(build, /VITE_API_URL/);
+    assert.match(build, /GITHUB_ACTIONS/);
   });
 });

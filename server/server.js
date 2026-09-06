@@ -7,7 +7,7 @@ import { getDefaultModel, listModels, streamChat } from './ollama.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 3000);
 const projectRoot = path.resolve(__dirname, '..');
-const app = createApp({ ollama: { listModels, streamChat }, projectRoot, defaultModel: getDefaultModel() });
+const app = createApp({ ollama: { listModels, streamChat }, projectRoot, defaultModel: getDefaultModel(), corsOrigins: process.env.CORS_ORIGINS });
 
 export { app };
 
