@@ -79,6 +79,17 @@ export function renderMessages(messages) {
   });
 }
 
+export function updateStreamingMessage(message) {
+  const messageElement = document.querySelector(`[data-message-id="${message.id}"] .message__content`);
+  if (messageElement) {
+    messageElement.textContent = message.content;
+    window.requestAnimationFrame(() => {
+      const messagesContainer = document.getElementById('messages');
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
+  }
+}
+
 /**
  * Builds the markup for a single message.
  * @param {Object} message - Message object.
@@ -91,7 +102,7 @@ function renderMessage(message) {
   const time = message.timestamp ? formatTime(message.timestamp) : '';
 
   return `
-    <article class="message ${roleClass}">
+    <article class="message ${roleClass}" data-message-id="${escapeHtml(message.id)}">
       <div class="message__avatar">${escapeHtml(avatar)}</div>
       <div class="message__bubble">
         <div class="message__meta">
@@ -110,13 +121,14 @@ function renderMessage(message) {
  * @returns {string} HTML string.
  */
 function renderMarkdown(content) {
-  let escaped = escapeHtml(content);
-
-  // Handle code blocks with language
-  escaped = escaped.replace(/```([\w]*)\n([\s\S]*?)```/g, (_, language, code) => {
+  const codeBlocks = [];
+  const codePlaceholder = (index) => `\u0000CODE_BLOCK_${index}\u0000`;
+  const withPlaceholders = String(content).replace(/```([\w-]*)\n?([\s\S]*?)```/g, (_, language, code) => {
     const lang = language.trim() || 'code';
-    return `<div class="code-block"><div class="code-block__header"><span>${escapeHtml(lang)}</span><button class="code-block__copy" type="button">Copy</button></div><pre><code>${escapeHtml(code.trim())}</code></pre></div>`;
+    const index = codeBlocks.push(`<div class="code-block"><div class="code-block__header"><span>${escapeHtml(lang)}</span><button class="code-block__copy" type="button">Copy</button></div><pre><code>${escapeHtml(code.trim())}</code></pre></div>`) - 1;
+    return codePlaceholder(index);
   });
+  let escaped = escapeHtml(withPlaceholders);
 
   // Handle bold
   escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -126,6 +138,10 @@ function renderMarkdown(content) {
 
   // Handle line breaks
   escaped = escaped.replace(/\n/g, '<br />');
+
+  codeBlocks.forEach((block, index) => {
+    escaped = escaped.replace(escapeHtml(codePlaceholder(index)), block);
+  });
 
   return escaped;
 }

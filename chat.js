@@ -1,9 +1,36 @@
 import { loadState, saveState } from './storage.js';
-import { renderConversations, renderMessages, setActiveConversation, setLandingVisible, showToast } from './ui.js';
-import { getResponse } from './api.js';
+import { renderConversations, renderMessages, setActiveConversation, setLandingVisible, showToast, updateStreamingMessage } from './ui.js';
+import { streamResponse } from './api.js';
 import { createId, formatTime } from './utils.js';
 
-let provider = 'gemini';
+let provider = 'local';
+let isSending = false;
+let activeAbortController = null;
+let streamBuffer = '';
+let streamFlushTimer = null;
+
+function setGenerationState(generating) {
+  document.getElementById('send-btn').disabled = generating;
+  document.getElementById('message-input').disabled = generating;
+  document.getElementById('stop-btn').classList.toggle('hidden', !generating);
+}
+
+function flushStream(conversation, assistantMessage) {
+  if (!streamBuffer) return;
+  assistantMessage.content += streamBuffer;
+  streamBuffer = '';
+  updateStreamingMessage(assistantMessage);
+  streamFlushTimer = null;
+}
+
+function scheduleStreamFlush(conversation, assistantMessage) {
+  if (streamFlushTimer !== null) return;
+  streamFlushTimer = window.setTimeout(() => flushStream(conversation, assistantMessage), 75);
+}
+
+function isActiveConversation(conversation) {
+  return loadState().activeConversationId === conversation.id;
+}
 
 /**
  * Initializes chat state and the initial conversation.
@@ -39,6 +66,8 @@ export function createNewConversation() {
  * Sends the text from the composer to the selected provider.
  */
 export async function sendMessage() {
+  if (isSending) return;
+
   const input = document.getElementById('message-input');
   const content = input.value.trim();
   if (!content) {
@@ -80,18 +109,57 @@ export async function sendMessage() {
   renderMessages(conversation.messages);
 
   try {
-    const reply = await getResponse(content, provider, { temperature: Number(document.getElementById('temperature-input').value) || 0.7 });
-    assistantMessage.content = reply;
+    isSending = true;
+    activeAbortController = new AbortController();
+    setGenerationState(true);
+    assistantMessage.content = '';
+    renderMessages(conversation.messages);
+    const history = conversation.messages.slice(0, -2).slice(-20).map(({ role, content: text }) => ({ role, content: text }));
+    await streamResponse({
+      message: content,
+      conversation: history,
+      options: {
+        model: document.getElementById('model-select').value,
+        temperature: Number(document.getElementById('temperature-input').value),
+        context: Number(document.getElementById('context-input').value),
+        maxTokens: Number(document.getElementById('max-tokens-input').value) || 512,
+      },
+      signal: activeAbortController.signal,
+      onToken: (token) => {
+        streamBuffer += token;
+        scheduleStreamFlush(conversation, assistantMessage);
+      },
+    });
+    flushStream(conversation, assistantMessage);
     conversation.updatedAt = formatTime(new Date().toISOString());
     saveState(state);
-    renderMessages(conversation.messages);
-    renderConversations(state.conversations, conversation.id);
+    if (isActiveConversation(conversation)) {
+      renderMessages(conversation.messages);
+      renderConversations(state.conversations, conversation.id);
+    }
   } catch (error) {
-    assistantMessage.content = `Error: ${error.message}`;
+    flushStream(conversation, assistantMessage);
+    if (error.name === 'AbortError') {
+      assistantMessage.content += assistantMessage.content ? '\n\n[Generation stopped]' : '[Generation stopped]';
+    } else {
+      assistantMessage.content = `Error: ${error.message || 'Local model request failed'}`;
+      showToast(error.message || 'Local model request failed');
+    }
     saveState(state);
-    renderMessages(conversation.messages);
-    showToast(error.message || 'Network error');
+    if (isActiveConversation(conversation)) renderMessages(conversation.messages);
+  } finally {
+    if (streamFlushTimer !== null) {
+      window.clearTimeout(streamFlushTimer);
+      streamFlushTimer = null;
+    }
+    isSending = false;
+    activeAbortController = null;
+    setGenerationState(false);
   }
+}
+
+export function stopGeneration() {
+  if (activeAbortController) activeAbortController.abort();
 }
 
 /**
@@ -109,6 +177,7 @@ export function handleSuggestionClick(prompt) {
  * @param {string} conversationId - Conversation id.
  */
 export function deleteConversation(conversationId) {
+  if (loadState().activeConversationId === conversationId) stopGeneration();
   const state = loadState();
   state.conversations = state.conversations.filter((conversation) => conversation.id !== conversationId);
   if (state.activeConversationId === conversationId) {
@@ -191,6 +260,7 @@ export function clearChats() {
  * Clears the current conversation messages.
  */
 export function clearCurrentChat() {
+  stopGeneration();
   const state = loadState();
   const conversation = state.conversations.find((c) => c.id === state.activeConversationId);
   
@@ -216,7 +286,7 @@ export function clearCurrentChat() {
  * @param {string} nextProvider - Provider name.
  */
 export function setProvider(nextProvider) {
-  provider = nextProvider;
+  provider = nextProvider || 'local';
 }
 
 /**

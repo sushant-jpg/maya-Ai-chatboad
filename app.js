@@ -1,8 +1,9 @@
 import { initUI, renderConversations, renderMessages, updateThemeUI, showToast, setActiveConversation, setLandingVisible } from './ui.js';
-import { initChat, sendMessage, handleSuggestionClick, createNewConversation, deleteConversation, renameConversation, exportChats, importChats, clearChats, clearCurrentChat, setProvider, getProvider } from './chat.js';
+import { initChat, sendMessage, stopGeneration, handleSuggestionClick, createNewConversation, deleteConversation, renameConversation, exportChats, importChats, clearChats, clearCurrentChat, setProvider, getProvider } from './chat.js';
 import { loadState, saveState } from './storage.js';
 import { initTheme } from './theme.js';
 import { debounce, escapeHtml, formatTime } from './utils.js';
+import { getModels } from './api.js';
 
 /**
  * Initializes the Maya application shell.
@@ -29,8 +30,10 @@ function initApp() {
   updateThemeUI(state.theme || 'dark');
   document.documentElement.setAttribute('data-font-size', state.settings?.fontSize || 'medium');
   document.documentElement.setAttribute('data-theme', state.theme || 'dark');
+  loadLocalModels();
 
   document.getElementById('new-chat-btn').addEventListener('click', () => {
+    stopGeneration();
     const convo = createNewConversation();
     setActiveConversation(convo.id);
     renderConversations(getAllConversations(), convo.id);
@@ -46,6 +49,7 @@ function initApp() {
   });
 
   document.getElementById('send-btn').addEventListener('click', () => sendMessage());
+  document.getElementById('stop-btn').addEventListener('click', () => stopGeneration());
   document.getElementById('chat-search').addEventListener('input', debounce((event) => {
     const term = event.target.value.toLowerCase();
     const conversations = loadState().conversations || [];
@@ -81,6 +85,12 @@ function initApp() {
     showToast(`Provider set to ${event.target.value}`);
   });
 
+  document.getElementById('model-select').addEventListener('change', (event) => {
+    const currentState = loadState();
+    currentState.settings = { ...(currentState.settings || {}), model: event.target.value };
+    saveState(currentState);
+  });
+
   document.getElementById('clear-chats-btn').addEventListener('click', () => {
     clearChats();
     renderConversations([], null);
@@ -113,6 +123,7 @@ function initApp() {
     const conversationButton = event.target.closest('[data-conversation-id]');
     if (conversationButton) {
       const id = conversationButton.dataset.conversationId;
+      stopGeneration();
       const conversations = getAllConversations();
       const activeConversation = conversations.find((item) => item.id === id);
       if (activeConversation) {
@@ -129,6 +140,20 @@ function initApp() {
       event.target.classList.add('hidden');
     }
   });
+}
+
+async function loadLocalModels() {
+  const select = document.getElementById('model-select');
+  const savedModel = loadState().settings?.model;
+  try {
+    const models = await getModels();
+    const availableModels = models.length ? models : [savedModel || 'qwen3:4b'];
+    select.innerHTML = availableModels.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join('');
+    select.value = availableModels.includes(savedModel) ? savedModel : availableModels[0];
+  } catch (error) {
+    select.value = savedModel || 'qwen3:4b';
+    showToast('Ollama is unavailable. Start ollama serve.');
+  }
 }
 
 /**

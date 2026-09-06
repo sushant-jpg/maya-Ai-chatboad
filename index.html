@@ -75,6 +75,7 @@
             <div class="composer-actions">
               <div class="composer-hint">Press Enter to send · Shift + Enter for a new line</div>
               <button class="send-btn" id="send-btn" type="button">Send</button>
+              <button class="secondary-btn hidden" id="stop-btn" type="button">Stop</button>
             </div>
           </div>
         </section>
@@ -106,15 +107,26 @@
           <label class="field">
             <span>Provider</span>
             <select id="provider-select">
-              <option value="gemini">Gemini</option>
-              <option value="openai">OpenAI</option>
-              <option value="openrouter">OpenRouter</option>
-              <option value="deepseek">DeepSeek</option>
+              <option value="local">Local LLM (Ollama)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Local Model</span>
+            <select id="model-select">
+              <option value="qwen3:4b">qwen3:4b</option>
             </select>
           </label>
           <label class="field">
             <span>Temperature</span>
             <input id="temperature-input" type="range" min="0" max="1" step="0.1" value="0.7" />
+          </label>
+          <label class="field">
+            <span>Context Size</span>
+            <input id="context-input" type="number" min="512" step="512" value="4096" />
+          </label>
+          <label class="field">
+            <span>Maximum Tokens</span>
+            <input id="max-tokens-input" type="number" min="128" step="128" value="512" />
           </label>
         </div>
         <div class="settings-actions">
